@@ -23,16 +23,20 @@ const CameraRig = ({ mode }: { mode: AnimationState }) => {
 
   useFrame((state) => {
     if (mode === 'COVER') {
-      // 레퍼런스 이미지처럼 - 도로 위에서 차량 가까이
+      // 레퍼런스 이미지처럼 - 도로 위에서 차량 가까이, 마우스 패닝 강화
       const targetPos = new THREE.Vector3(
-        45 + mousePos.current.x * 8,    // 더 오른쪽으로
-        24 + mousePos.current.y * 3,    // 도로 높이보다 약간 위 (18 + 6)
+        45 + mousePos.current.x * 25,   // 좌우 패닝 강화 (8 → 25)
+        24 + mousePos.current.y * 12,   // 상하 패닝 강화 (3 → 12)
         150                              // 차량과 가까운 위치
       );
-      camera.position.lerp(targetPos, 0.03);
+      camera.position.lerp(targetPos, 0.05); // 반응 속도 증가 (0.03 → 0.05)
 
-      // 도로를 따라 앞쪽을 바라봄 (멀리 소실점)
-      const lookTarget = new THREE.Vector3(-20, 20, -120);
+      // 도로를 따라 앞쪽을 바라봄 (멀리 소실점) + 마우스에 따라 시선도 약간 이동
+      const lookTarget = new THREE.Vector3(
+        -20 + mousePos.current.x * 10,
+        20 + mousePos.current.y * 5,
+        -120
+      );
       camera.lookAt(lookTarget);
     } else {
       // Explore mode - 넓은 궤도
