@@ -50,7 +50,7 @@ const CameraRig = ({ mode }: { mode: AnimationState }) => {
 // 하늘은 이제 RoadSystem에서 처리
 
 // Traffic configuration - 레퍼런스처럼 가까운 차량 강조
-const TrafficFlow: React.FC<{ curve: THREE.CatmullRomCurve3 }> = ({ curve }) => {
+const TrafficFlow: React.FC<{ curve: THREE.CatmullRomCurve3; timeOfDay?: number }> = ({ curve, timeOfDay = 0 }) => {
   const cars = [
     // === 최전경 - 히어로 차량 (카메라 바로 앞) ===
     { laneOffset: 0.3, startT: 0.88, speed: 0.35, color: PALETTE.coralRed, carType: 'cadillac' as const },
@@ -100,15 +100,50 @@ const TrafficFlow: React.FC<{ curve: THREE.CatmullRomCurve3 }> = ({ curve }) => 
           color={car.color}
           carType={car.carType}
           scale={1.0}
+          timeOfDay={timeOfDay}
         />
       ))}
     </>
   );
 };
 
+// 색상 보간 함수
+const lerpColor = (color1: string, color2: string, t: number): string => {
+  const c1 = new THREE.Color(color1);
+  const c2 = new THREE.Color(color2);
+  const result = c1.lerp(c2, t);
+  return `#${result.getHexString()}`;
+};
+
 // Main scene component
-const IllustrationScene: React.FC<{ mode: AnimationState }> = ({ mode }) => {
+interface SceneProps {
+  mode: AnimationState;
+  timeOfDay?: number; // 0 = 낮, 1 = 밤
+}
+
+const IllustrationScene: React.FC<SceneProps> = ({ mode, timeOfDay = 0 }) => {
   const curve = useMemo(() => createHighwayCurve(), []);
+
+  // 낮/밤 색상 팔레트
+  const dayColors = {
+    ambient: '#fff5e6',
+    main: '#fffaf0',
+    fill: '#ffe8d0',
+    back: '#d0e8ff',
+  };
+
+  const nightColors = {
+    ambient: '#1a1a3a',
+    main: '#4a4a8a',
+    fill: '#2a2a5a',
+    back: '#0a0a2a',
+  };
+
+  // 조명 강도
+  const ambientIntensity = 0.6 - timeOfDay * 0.4; // 0.6 → 0.2
+  const mainIntensity = 1.0 - timeOfDay * 0.6; // 1.0 → 0.4
+  const fillIntensity = 0.4 - timeOfDay * 0.2; // 0.4 → 0.2
+  const backIntensity = 0.3 - timeOfDay * 0.1; // 0.3 → 0.2
 
   return (
     <>
@@ -121,12 +156,15 @@ const IllustrationScene: React.FC<{ mode: AnimationState }> = ({ mode }) => {
         position={[45, 24, 150]}
       />
 
-      {/* Lighting - warm 50s illustration feel */}
-      <ambientLight intensity={0.6} color="#fff5e6" />
+      {/* Lighting - 낮/밤 전환 */}
+      <ambientLight
+        intensity={ambientIntensity}
+        color={lerpColor(dayColors.ambient, nightColors.ambient, timeOfDay)}
+      />
       <directionalLight
         position={[20, 40, 30]}
-        intensity={1.0}
-        color="#fffaf0"
+        intensity={mainIntensity}
+        color={lerpColor(dayColors.main, nightColors.main, timeOfDay)}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={200}
@@ -135,28 +173,24 @@ const IllustrationScene: React.FC<{ mode: AnimationState }> = ({ mode }) => {
         shadow-camera-top={80}
         shadow-camera-bottom={-80}
       />
-      {/* Fill light from the right (where camera is) */}
+      {/* Fill light */}
       <directionalLight
         position={[30, 15, 50]}
-        intensity={0.4}
-        color="#ffe8d0"
+        intensity={fillIntensity}
+        color={lerpColor(dayColors.fill, nightColors.fill, timeOfDay)}
       />
-      {/* Back light for depth */}
+      {/* Back light */}
       <directionalLight
         position={[-30, 20, -50]}
-        intensity={0.3}
-        color="#d0e8ff"
+        intensity={backIntensity}
+        color={lerpColor(dayColors.back, nightColors.back, timeOfDay)}
       />
 
-      {/* Background는 이제 RoadSystem에 포함 */}
-
       {/* Road System */}
-      <RoadSystem />
+      <RoadSystem timeOfDay={timeOfDay} />
 
       {/* Traffic */}
-      <TrafficFlow curve={curve} />
-
-      {/* Fog removed for clearer 1950s illustration style */}
+      <TrafficFlow curve={curve} timeOfDay={timeOfDay} />
 
       {/* 50년대 빈티지 포스트 프로세싱 */}
       <PostEffects />

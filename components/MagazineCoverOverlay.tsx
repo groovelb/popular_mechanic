@@ -4,12 +4,63 @@ import { AnimationState } from '../types';
 interface MagazineCoverOverlayProps {
   mode: AnimationState;
   onToggleMode: () => void;
+  timeOfDay?: number; // 0 = 낮 (풀 커버), 1 = 밤 (미니멀 푸터)
 }
 
-const MagazineCoverOverlay: React.FC<MagazineCoverOverlayProps> = ({ mode, onToggleMode }) => {
+const MagazineCoverOverlay: React.FC<MagazineCoverOverlayProps> = ({ mode, onToggleMode, timeOfDay = 0 }) => {
+  const isNight = timeOfDay > 0.5;
+
+  // 밤 모드: 미니멀 푸터 스타일
+  if (isNight) {
+    return (
+      <div
+        className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-end"
+        style={{ opacity: timeOfDay }}
+      >
+        {/* 미니멀 푸터 */}
+        <div
+          className="w-full py-8 px-6 text-center"
+          style={{
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+          }}
+        >
+          <p
+            className="text-sm uppercase tracking-[0.4em] mb-2"
+            style={{ color: 'rgba(255,255,255,0.6)', fontFamily: "Georgia, serif" }}
+          >
+            Popular Mechanics
+          </p>
+          <p
+            className="text-xs tracking-widest"
+            style={{ color: 'rgba(255,255,255,0.4)', fontFamily: "Arial, sans-serif" }}
+          >
+            JANUARY 1959 • A TRIBUTE TO THE GOLDEN AGE
+          </p>
+
+          {/* Back to Top 버튼 */}
+          <div className="mt-6 pointer-events-auto">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="text-xs uppercase tracking-widest px-6 py-2 border rounded-full transition-all hover:bg-white hover:text-black"
+              style={{
+                color: 'rgba(255,255,255,0.7)',
+                borderColor: 'rgba(255,255,255,0.3)',
+                fontFamily: "Arial, sans-serif",
+              }}
+            >
+              Back to Top ↑
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 낮 모드: 풀 매거진 커버
   return (
     <div
       className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-700 ${mode === 'EXPLORE' ? 'opacity-0' : 'opacity-100'}`}
+      style={{ opacity: 1 - timeOfDay }}
     >
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 text-center py-2" style={{ backgroundColor: '#2a2018' }}>

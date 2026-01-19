@@ -230,8 +230,13 @@ interface BuildingProps {
   type?: 'residential' | 'commercial' | 'tower';
 }
 
-const SFBuilding: React.FC<BuildingProps> = ({ position, width, height, depth, color, type = 'residential' }) => {
-  const windowColor = '#3a5570';
+interface BuildingPropsExtended extends BuildingProps {
+  timeOfDay?: number;
+}
+
+const SFBuilding: React.FC<BuildingPropsExtended> = ({ position, width, height, depth, color, type = 'residential', timeOfDay = 0 }) => {
+  const windowColor = timeOfDay > 0.3 ? '#ffee99' : '#3a5570'; // 밤에 노란 불빛
+  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 0.8 : 0;
   const roofColor = '#2a2a2a';  // 검정 지붕
   const darkRoofColor = '#1a1a1a';
 
@@ -278,10 +283,17 @@ const SFBuilding: React.FC<BuildingProps> = ({ position, width, height, depth, c
         />
       </mesh>
 
-      {/* 창문 - 더 멀리 떨어뜨림 */}
+      {/* 창문 - 밤에 발광 */}
       {Array.from({ length: floorCount }).map((_, row) =>
         Array.from({ length: windowCount }).map((_, col) => {
           const xPos = (col - (windowCount - 1) / 2) * 5;
+          // 랜덤하게 일부 창문만 켜짐 (시드 기반)
+          const windowSeed = row * 100 + col + Math.floor(width * 10);
+          const isLit = seededRandom(windowSeed) > 0.3;
+          const litColor = isLit ? windowColor : '#2a3a4a';
+          const litEmissive = isLit && timeOfDay > 0.3 ? '#ffee99' : '#000000';
+          const litIntensity = isLit ? windowEmissive : 0;
+
           return (
             <mesh
               key={`window-${row}-${col}`}
@@ -289,7 +301,9 @@ const SFBuilding: React.FC<BuildingProps> = ({ position, width, height, depth, c
             >
               <boxGeometry args={[2, 3, 0.15]} />
               <meshToonMaterial
-                color={windowColor}
+                color={litColor}
+                emissive={litEmissive}
+                emissiveIntensity={litIntensity}
                 gradientMap={toonGradient3}
               />
             </mesh>
@@ -303,7 +317,7 @@ const SFBuilding: React.FC<BuildingProps> = ({ position, width, height, depth, c
 };
 
 // 대규모 도시 배경 - 도로 회피 로직 포함
-const CityBackground: React.FC = () => {
+const CityBackground: React.FC<{ timeOfDay?: number }> = ({ timeOfDay = 0 }) => {
   const colorArray = Object.values(BUILDING_COLORS);
   const types: Array<'residential' | 'commercial' | 'tower'> = ['residential', 'commercial', 'tower'];
   const curve = useMemo(() => createHighwayCurve(), []);
@@ -370,20 +384,25 @@ const CityBackground: React.FC = () => {
       });
     }
 
-    return positions.map((p, i) => (
-      <SFBuilding
-        key={i}
-        position={[p.x, 0, p.z]}
-        width={p.w}
-        height={p.h}
-        depth={p.d}
-        color={colorArray[i % colorArray.length]}
-        type={p.type as 'residential' | 'commercial' | 'tower'}
-      />
-    ));
+    return positions;
   }, [curve]);
 
-  return <group>{buildings}</group>;
+  return (
+    <group>
+      {buildings.map((p, i) => (
+        <SFBuilding
+          key={i}
+          position={[p.x, 0, p.z]}
+          width={p.w}
+          height={p.h}
+          depth={p.d}
+          color={colorArray[i % colorArray.length]}
+          type={p.type as 'residential' | 'commercial' | 'tower'}
+          timeOfDay={timeOfDay}
+        />
+      ))}
+    </group>
+  );
 };
 
 // ============================================
@@ -587,7 +606,7 @@ const StreetElements: React.FC = () => {
 // ============================================
 // 지상 건물들 (작은 상점들)
 // ============================================
-const GroundBuildings: React.FC = () => {
+const GroundBuildings: React.FC<{ timeOfDay?: number }> = ({ timeOfDay = 0 }) => {
   const colorArray = Object.values(BUILDING_COLORS);
 
   const buildings = useMemo(() => {
@@ -606,47 +625,72 @@ const GroundBuildings: React.FC = () => {
       });
     }
 
-    return positions.map((p, i) => (
-      <group key={`ground-building-${i}`} position={[p.x, 0, p.z]}>
-        <mesh position={[0, p.h / 2, 0]}>
-          <boxGeometry args={[p.w, p.h, p.d]} />
-          <meshToonMaterial
-            color={colorArray[i % colorArray.length]}
-            gradientMap={toonGradient5}
-            polygonOffset={true}
-            polygonOffsetFactor={4}
-            polygonOffsetUnits={4}
-          />
-        </mesh>
-        {/* 간판/처마 */}
-        <mesh position={[0, p.h * 0.7, p.d / 2 + 0.3]}>
-          <boxGeometry args={[p.w + 0.5, 1.5, 0.5]} />
-          <meshToonMaterial color="#2a2a2a" gradientMap={toonGradient3} />
-        </mesh>
-      </group>
-    ));
+    return positions;
   }, []);
 
-  return <group>{buildings}</group>;
+  const windowColor = timeOfDay > 0.3 ? '#ffee99' : '#3a5570';
+  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 0.8 : 0;
+
+  return (
+    <group>
+      {buildings.map((p, i) => {
+        const isLit = seededRandom(i * 500) > 0.4;
+        return (
+          <group key={`ground-building-${i}`} position={[p.x, 0, p.z]}>
+            <mesh position={[0, p.h / 2, 0]}>
+              <boxGeometry args={[p.w, p.h, p.d]} />
+              <meshToonMaterial
+                color={colorArray[i % colorArray.length]}
+                gradientMap={toonGradient5}
+                polygonOffset={true}
+                polygonOffsetFactor={4}
+                polygonOffsetUnits={4}
+              />
+            </mesh>
+            {/* 간판/처마 */}
+            <mesh position={[0, p.h * 0.7, p.d / 2 + 0.3]}>
+              <boxGeometry args={[p.w + 0.5, 1.5, 0.5]} />
+              <meshToonMaterial color="#2a2a2a" gradientMap={toonGradient3} />
+            </mesh>
+            {/* 상점 창문 (밤에 발광) */}
+            <mesh position={[0, p.h * 0.4, p.d / 2 + 0.2]}>
+              <boxGeometry args={[p.w * 0.7, p.h * 0.35, 0.1]} />
+              <meshToonMaterial
+                color={isLit ? windowColor : '#2a3a4a'}
+                emissive={isLit && timeOfDay > 0.3 ? '#ffee99' : '#000000'}
+                emissiveIntensity={isLit ? windowEmissive : 0}
+                gradientMap={toonGradient3}
+              />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
 };
 
 // ============================================
-// 현실적인 하늘 (drei Sky 사용)
+// 현실적인 하늘 (drei Sky 사용) - 낮/밤 전환
 // ============================================
-const RealisticSky: React.FC = () => {
-  // 태양 위치 (왼쪽 위)
-  const sunPosition: [number, number, number] = [-1, 0.3, -0.5];
+const RealisticSky: React.FC<{ timeOfDay: number }> = ({ timeOfDay }) => {
+  // 태양 위치 - 낮에는 위, 밤에는 지평선 아래
+  const sunY = 0.3 - timeOfDay * 0.8; // 0.3 → -0.5
+  const sunPosition: [number, number, number] = [-1, sunY, -0.5];
+
+  // 밤에는 더 어두운 하늘
+  const turbidity = 8 + timeOfDay * 2;
+  const rayleigh = 0.5 - timeOfDay * 0.4;
 
   return (
     <Sky
       distance={450000}
       sunPosition={sunPosition}
-      inclination={0.5}
+      inclination={0.5 - timeOfDay * 0.3}
       azimuth={0.25}
       mieCoefficient={0.005}
       mieDirectionalG={0.8}
-      rayleigh={0.5}
-      turbidity={8}
+      rayleigh={Math.max(0.1, rayleigh)}
+      turbidity={turbidity}
     />
   );
 };
@@ -670,27 +714,97 @@ const Terrain: React.FC = () => {
 };
 
 // ============================================
+// 밤하늘 별들
+// ============================================
+const Stars: React.FC<{ opacity: number }> = ({ opacity }) => {
+  const stars = useMemo(() => {
+    const positions: Array<{ pos: [number, number, number]; size: number }> = [];
+    for (let i = 0; i < 200; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.5;
+      const r = 400;
+      positions.push({
+        pos: [
+          r * Math.sin(phi) * Math.cos(theta),
+          r * Math.cos(phi) + 50,
+          r * Math.sin(phi) * Math.sin(theta) - 200,
+        ],
+        size: 0.5 + Math.random() * 0.5,
+      });
+    }
+    return positions;
+  }, []);
+
+  if (opacity < 0.1) return null;
+
+  return (
+    <group>
+      {stars.map((star, i) => (
+        <mesh key={i} position={star.pos}>
+          <sphereGeometry args={[star.size, 8, 8]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={opacity} />
+        </mesh>
+      ))}
+      {/* 달 - 메인 */}
+      <mesh position={[100, 150, -300]}>
+        <sphereGeometry args={[15, 32, 32]} />
+        <meshBasicMaterial color="#fffde8" transparent opacity={opacity} />
+      </mesh>
+      {/* 달 글로우 - 외곽 발광 효과 (여러 레이어) */}
+      <mesh position={[100, 150, -301]}>
+        <sphereGeometry args={[22, 32, 32]} />
+        <meshBasicMaterial color="#fffde8" transparent opacity={opacity * 0.25} />
+      </mesh>
+      <mesh position={[100, 150, -302]}>
+        <sphereGeometry args={[30, 32, 32]} />
+        <meshBasicMaterial color="#ffe8b8" transparent opacity={opacity * 0.12} />
+      </mesh>
+      <mesh position={[100, 150, -303]}>
+        <sphereGeometry args={[45, 32, 32]} />
+        <meshBasicMaterial color="#ffd890" transparent opacity={opacity * 0.06} />
+      </mesh>
+      {/* 달빛 - 환경광 효과 */}
+      {opacity > 0.5 && (
+        <pointLight
+          position={[100, 150, -250]}
+          color="#e8e0d0"
+          intensity={opacity * 0.3}
+          distance={500}
+          decay={2}
+        />
+      )}
+    </group>
+  );
+};
+
+// ============================================
 // 완성된 도시 시스템
 // ============================================
-const RoadSystem: React.FC = () => {
+interface RoadSystemProps {
+  timeOfDay?: number;
+}
+
+const RoadSystem: React.FC<RoadSystemProps> = ({ timeOfDay = 0 }) => {
   return (
     <group>
       {/* 물리적으로 현실적인 하늘 (drei Sky) */}
-      <RealisticSky />
+      <RealisticSky timeOfDay={timeOfDay} />
+      {/* 밤하늘 별들 */}
+      <Stars opacity={timeOfDay} />
       {/* 바다 - 지평선까지 확장, 질감 강화 */}
       <Ocean />
       {/* 지면 */}
       <Terrain />
       {/* 지상 도로 (고가도로 아래) */}
       <GroundRoad />
-      {/* 지상 건물들 (상점) */}
-      <GroundBuildings />
+      {/* 지상 건물들 (상점) - 밤에 창문 발광 */}
+      <GroundBuildings timeOfDay={timeOfDay} />
       {/* 거리 요소들 (신호등 + 사람들) */}
       <StreetElements />
       {/* 고가도로 */}
       <CurvedHighway />
-      {/* 도시 건물들 - 도로 회피 */}
-      <CityBackground />
+      {/* 도시 건물들 - 도로 회피, 밤에 창문 발광 */}
+      <CityBackground timeOfDay={timeOfDay} />
     </group>
   );
 };

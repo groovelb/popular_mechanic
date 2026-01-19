@@ -13,6 +13,7 @@ interface CarProps {
   carType?: 'cadillac' | 'impala' | 'fury' | 'fairlane';
   scale?: number;
   useGLTFModel?: boolean;
+  timeOfDay?: number; // 0 = 낮, 1 = 밤
 }
 
 // Plymouth Fury 1958 모델 (모든 차종에 사용, 색상으로 구분)
@@ -639,6 +640,7 @@ const VintageCar: React.FC<CarProps> = ({
   carType = 'cadillac',
   scale = 1,
   useGLTFModel = false,  // 프로시저럴 모델 사용 (부품별 색상 구분)
+  timeOfDay = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const progress = useRef(startT);
@@ -703,6 +705,10 @@ const VintageCar: React.FC<CarProps> = ({
     />
   );
 
+  // 헤드라이트 강도 (밤에 밝아짐)
+  const headlightIntensity = timeOfDay * 15;
+  const taillightIntensity = timeOfDay * 5;
+
   return (
     <group ref={groupRef}>
       {useGLTFModel ? (
@@ -711,6 +717,46 @@ const VintageCar: React.FC<CarProps> = ({
         </Suspense>
       ) : (
         ProceduralFallback
+      )}
+
+      {/* 헤드라이트 (밤에 활성화) */}
+      {timeOfDay > 0.1 && (
+        <>
+          {/* 왼쪽 헤드라이트 */}
+          <pointLight
+            position={[-0.65, 0.4, 2.2]}
+            color="#fffde0"
+            intensity={headlightIntensity}
+            distance={30}
+            decay={2}
+          />
+          <mesh position={[-0.65, 0.4, 2.25]}>
+            <sphereGeometry args={[0.15, 16, 16]} />
+            <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
+          </mesh>
+
+          {/* 오른쪽 헤드라이트 */}
+          <pointLight
+            position={[0.65, 0.4, 2.2]}
+            color="#fffde0"
+            intensity={headlightIntensity}
+            distance={30}
+            decay={2}
+          />
+          <mesh position={[0.65, 0.4, 2.25]}>
+            <sphereGeometry args={[0.15, 16, 16]} />
+            <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
+          </mesh>
+
+          {/* 테일라이트 */}
+          <pointLight
+            position={[0, 0.4, -2.5]}
+            color="#ff3030"
+            intensity={taillightIntensity}
+            distance={10}
+            decay={2}
+          />
+        </>
       )}
     </group>
   );
