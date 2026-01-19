@@ -140,11 +140,11 @@ const IllustrationScene: React.FC<SceneProps> = ({ mode, timeOfDay = 0 }) => {
     back: '#020206',     // 거의 검정
   };
 
-  // 조명 강도 - 밤에 훨씬 더 어둡게
-  const ambientIntensity = 0.6 - timeOfDay * 0.57; // 0.6 → 0.03
-  const mainIntensity = 1.0 - timeOfDay * 0.92; // 1.0 → 0.08
-  const fillIntensity = 0.4 - timeOfDay * 0.38; // 0.4 → 0.02
-  const backIntensity = 0.3 - timeOfDay * 0.28; // 0.3 → 0.02
+  // 조명 강도 - 낮 줄임, 밤 어둡게
+  const ambientIntensity = 0.4 - timeOfDay * 0.37; // 0.4 → 0.03
+  const mainIntensity = 0.7 - timeOfDay * 0.62; // 0.7 → 0.08
+  const fillIntensity = 0.25 - timeOfDay * 0.23; // 0.25 → 0.02
+  const backIntensity = 0.2 - timeOfDay * 0.18; // 0.2 → 0.02
 
   return (
     <>

@@ -366,12 +366,13 @@ const VintageColor = forwardRef<VintageColorEffect, VintageColorProps>(
 const PostEffects: React.FC = () => {
   return (
     <EffectComposer>
-      {/* 1. Bloom - emissive 광원에서 빛 번짐 (가장 먼저) */}
+      {/* 1. Bloom - emissive 광원에서 빛 번짐 (전조등 잔상 효과 강화) */}
       <Bloom
-        intensity={0.8}
-        luminanceThreshold={0.75}
-        luminanceSmoothing={0.2}
+        intensity={1.2}
+        luminanceThreshold={0.6}
+        luminanceSmoothing={0.4}
         mipmapBlur={true}
+        radius={0.85}
       />
 
       {/* 2. Contour - 윤곽선 강조 (광원 영역 제외) */}
@@ -380,19 +381,19 @@ const PostEffects: React.FC = () => {
       {/* 3. Paper Texture - 종이 텍스처 */}
       <PaperTexture intensity={0.05} scale={50.0} />
 
-      {/* 4. Vintage Color - 최소화 (거의 원본) */}
-      <VintageColor warmth={0.1} fadeAmount={0.02} />
+      {/* 4. Vintage Color - 최소화 */}
+      <VintageColor warmth={0.05} fadeAmount={0.0} />
 
-      {/* 5. 채도 + 대비 - 자연스럽게 */}
+      {/* 5. 채도 + 대비 - 비비드하게 */}
       <HueSaturation
         blendFunction={BlendFunction.NORMAL}
         hue={0.0}
-        saturation={0.1}
+        saturation={0.25}
       />
 
       <BrightnessContrast
         brightness={0.0}
-        contrast={0.08}
+        contrast={0.12}
       />
 
       {/* 6. 미세 노이즈 */}

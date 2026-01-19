@@ -43,10 +43,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ mode, onToggleMode }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // 배경색 보간 (낮: 청록, 밤: 거의 검정)
+  // 배경색 보간 (낮: 청록, 밤: 어두운 보라/남색)
   const lerpColor = (t: number): string => {
     const dayColor = { r: 0x7f, g: 0xbf, b: 0xb5 }; // #7fbfb5
-    const nightColor = { r: 0x02, g: 0x02, b: 0x08 }; // #020208 (거의 검정)
+    const nightColor = { r: 0x06, g: 0x04, b: 0x10 }; // #060410 (어두운 보라)
     const r = Math.round(dayColor.r + (nightColor.r - dayColor.r) * t);
     const g = Math.round(dayColor.g + (nightColor.g - dayColor.g) * t);
     const b = Math.round(dayColor.b + (nightColor.b - dayColor.b) * t);

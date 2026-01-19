@@ -93,15 +93,15 @@ const illustrationFragmentShader = `
       headlightInfluence = frontFacing * lowHeight * uTimeOfDay * 0.3;
     }
 
-    // 색상 믹싱
-    vec3 shadowTint = uColor * uShadowColor * 0.4; // 밤에 더 어둡게
-    vec3 midTone = uColor * 0.75;
-    vec3 highlightTint = mix(uColor, uHighlightColor, 0.25);
+    // 색상 믹싱 - 원색 유지, 더 선명하게
+    vec3 shadowTint = uColor * 0.55; // 그림자는 원색의 어두운 버전
+    vec3 midTone = uColor * 0.9;     // 중간톤은 거의 원색
+    vec3 highlightTint = mix(uColor, uHighlightColor, 0.15); // 하이라이트만 살짝 밝게
 
-    // 3단계 툰 셰이딩
+    // 3단계 툰 셰이딩 - 낮에 더 선명하게
     vec3 finalColor = shadowTint * (dayLight + nightAmbient);
-    finalColor = mix(finalColor, midTone * (dayLight + nightAmbient * 2.0), smoothstep(0.15, 0.2, toonShade));
-    finalColor = mix(finalColor, highlightTint * dayLight, smoothstep(0.5, 0.55, toonShade));
+    finalColor = mix(finalColor, midTone * (dayLight + nightAmbient * 2.0), smoothstep(0.1, 0.15, toonShade));
+    finalColor = mix(finalColor, highlightTint * dayLight, smoothstep(0.45, 0.5, toonShade));
 
     // 스페큘러 하이라이트 (반사)
     finalColor = mix(finalColor, uHighlightColor * dayLight, toonSpec * 0.4);
@@ -121,9 +121,9 @@ const illustrationFragmentShader = `
     vec3 moonAmbient = uColor * vec3(0.1, 0.12, 0.18) * uTimeOfDay;
     finalColor = max(finalColor, moonAmbient);
 
-    // 채도 조절 (밤에는 채도 낮춤 - 물리적으로 정확)
+    // 채도 조절 - 낮에 비비드, 밤에만 채도 낮춤
     float gray = dot(finalColor, vec3(0.299, 0.587, 0.114));
-    float saturation = 1.2 - uTimeOfDay * 0.4; // 낮: 1.2, 밤: 0.8
+    float saturation = 1.35 - uTimeOfDay * 0.5; // 낮: 1.35 (비비드), 밤: 0.85
     finalColor = mix(vec3(gray), finalColor, saturation);
 
     // 클리핑 방지
@@ -374,11 +374,11 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
   wheelRLRef,
   timeOfDay = 0,
 }) => {
-  // 50년대 일러스트 스타일 머티리얼
+  // 50년대 일러스트 스타일 머티리얼 - 선명한 원색 유지
   const bodyMaterial = useMemo(
     () => createIllustrationMaterial(color, {
-      shadowColor: new THREE.Color('#a07050'),
-      highlightColor: new THREE.Color('#fff8e8'),
+      shadowColor: new THREE.Color('#808080'), // 중립 그레이 (색상 오염 방지)
+      highlightColor: new THREE.Color('#ffffff'), // 순백 하이라이트
       shadowSmooth: 0.25,
       highlightSmooth: 0.8,
       timeOfDay,
@@ -392,9 +392,9 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
   );
 
   const glassMaterial = useMemo(
-    () => createIllustrationMaterial('#7090a8', {
-      shadowColor: new THREE.Color('#506070'),
-      highlightColor: new THREE.Color('#c0d8e8'),
+    () => createIllustrationMaterial('#88b0c8', {
+      shadowColor: new THREE.Color('#667788'), // 중립 블루그레이
+      highlightColor: new THREE.Color('#d8f0ff'), // 밝은 하이라이트
       shadowSmooth: 0.2,
       highlightSmooth: 0.9,
       timeOfDay,
@@ -418,15 +418,15 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
     []
   );
 
-  // 헤드라이트 - 낮에는 유리/크롬 느낌, 밤에만 밝게
+  // 헤드라이트 - 낮에는 유리/크롬 느낌, 밤에만 밝게 (잔상 강화)
   const headLightMaterial = useMemo(() => {
     const isNight = timeOfDay > 0.4;
     if (isNight) {
-      // 밤: 밝은 emissive
+      // 밤: 밝은 emissive (잔상 효과를 위해 강화)
       const mat = new THREE.MeshStandardMaterial({
         color: '#fffde0',
         emissive: '#fffde0',
-        emissiveIntensity: timeOfDay * 2,
+        emissiveIntensity: timeOfDay * 4,
         toneMapped: false,
       });
       return mat;
@@ -766,49 +766,49 @@ const VintageCar: React.FC<CarProps> = ({
         ProceduralFallback
       )}
 
-      {/* 헤드라이트 (밤에만 활성화) - Emissive로 Bloom이 처리 */}
+      {/* 헤드라이트 (밤에만 활성화) - Emissive로 Bloom이 처리, 잔상 강화 */}
       {timeOfDay > 0.4 && (
         <>
-          {/* 왼쪽 헤드라이트 - emissive */}
+          {/* 왼쪽 헤드라이트 - emissive 강화 */}
           <mesh position={[-0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.12, 12, 12]} />
+            <sphereGeometry args={[0.14, 12, 12]} />
             <meshStandardMaterial
               color="#fffde0"
               emissive="#fffde0"
-              emissiveIntensity={timeOfDay * 3}
+              emissiveIntensity={timeOfDay * 5}
               toneMapped={false}
             />
           </mesh>
 
-          {/* 오른쪽 헤드라이트 - emissive */}
+          {/* 오른쪽 헤드라이트 - emissive 강화 */}
           <mesh position={[0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.12, 12, 12]} />
+            <sphereGeometry args={[0.14, 12, 12]} />
             <meshStandardMaterial
               color="#fffde0"
               emissive="#fffde0"
-              emissiveIntensity={timeOfDay * 3}
+              emissiveIntensity={timeOfDay * 5}
               toneMapped={false}
             />
           </mesh>
 
           {/* 왼쪽 테일라이트 - emissive */}
           <mesh position={[-0.5, 0.35, -2.8]}>
-            <sphereGeometry args={[0.08, 10, 10]} />
+            <sphereGeometry args={[0.1, 10, 10]} />
             <meshStandardMaterial
               color="#ff2020"
               emissive="#ff2020"
-              emissiveIntensity={timeOfDay * 2}
+              emissiveIntensity={timeOfDay * 3}
               toneMapped={false}
             />
           </mesh>
 
           {/* 오른쪽 테일라이트 - emissive */}
           <mesh position={[0.5, 0.35, -2.8]}>
-            <sphereGeometry args={[0.08, 10, 10]} />
+            <sphereGeometry args={[0.1, 10, 10]} />
             <meshStandardMaterial
               color="#ff2020"
               emissive="#ff2020"
-              emissiveIntensity={timeOfDay * 2}
+              emissiveIntensity={timeOfDay * 3}
               toneMapped={false}
             />
           </mesh>

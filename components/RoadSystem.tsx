@@ -235,8 +235,8 @@ interface BuildingPropsExtended extends BuildingProps {
 }
 
 const SFBuilding: React.FC<BuildingPropsExtended> = ({ position, width, height, depth, color, type = 'residential', timeOfDay = 0 }) => {
-  const windowColor = timeOfDay > 0.3 ? '#ffdd66' : '#3a5570'; // 밤에 더 밝은 노란 불빛
-  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 1.2 : 0; // 더 강한 발광
+  const windowColor = timeOfDay > 0.3 ? '#e8c855' : '#3a5570'; // 밤에 따뜻한 노란 불빛 (덜 밝게)
+  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 0.5 : 0; // 발광 줄임
   const roofColor = '#2a2a2a';  // 검정 지붕
   const darkRoofColor = '#1a1a1a';
 
@@ -564,7 +564,7 @@ const StreetLamp: React.FC<{ position: [number, number, number]; timeOfDay?: num
         <meshStandardMaterial
           color={isNight ? "#ffe8a0" : "#605040"}
           emissive={isNight ? "#ffdd80" : "#000000"}
-          emissiveIntensity={isNight ? timeOfDay * 4 : 0}
+          emissiveIntensity={isNight ? timeOfDay * 2.5 : 0}
           toneMapped={false}
         />
       </mesh>
@@ -669,8 +669,8 @@ const GroundBuildings: React.FC<{ timeOfDay?: number }> = ({ timeOfDay = 0 }) =>
     return positions;
   }, []);
 
-  const windowColor = timeOfDay > 0.3 ? '#ffdd55' : '#3a5570';
-  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 1.5 : 0; // 더 강한 발광
+  const windowColor = timeOfDay > 0.3 ? '#d8b845' : '#3a5570';
+  const windowEmissive = timeOfDay > 0.3 ? timeOfDay * 0.6 : 0; // 발광 줄임
 
   return (
     <group>
