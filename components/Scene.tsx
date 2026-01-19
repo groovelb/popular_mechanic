@@ -132,18 +132,19 @@ const IllustrationScene: React.FC<SceneProps> = ({ mode, timeOfDay = 0 }) => {
     back: '#d0e8ff',
   };
 
+  // 밤 - 보라색이 살짝 도는 어두운 톤
   const nightColors = {
-    ambient: '#1a1a3a',
-    main: '#4a4a8a',
-    fill: '#2a2a5a',
-    back: '#0a0a2a',
+    ambient: '#06040c',  // 매우 어두운 보라
+    main: '#0a0818',     // 어두운 보라/남색
+    fill: '#050410',     // 거의 검정
+    back: '#020206',     // 거의 검정
   };
 
-  // 조명 강도
-  const ambientIntensity = 0.6 - timeOfDay * 0.4; // 0.6 → 0.2
-  const mainIntensity = 1.0 - timeOfDay * 0.6; // 1.0 → 0.4
-  const fillIntensity = 0.4 - timeOfDay * 0.2; // 0.4 → 0.2
-  const backIntensity = 0.3 - timeOfDay * 0.1; // 0.3 → 0.2
+  // 조명 강도 - 밤에 훨씬 더 어둡게
+  const ambientIntensity = 0.6 - timeOfDay * 0.57; // 0.6 → 0.03
+  const mainIntensity = 1.0 - timeOfDay * 0.92; // 1.0 → 0.08
+  const fillIntensity = 0.4 - timeOfDay * 0.38; // 0.4 → 0.02
+  const backIntensity = 0.3 - timeOfDay * 0.28; // 0.3 → 0.02
 
   return (
     <>

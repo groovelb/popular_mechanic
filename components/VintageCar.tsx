@@ -41,13 +41,14 @@ const illustrationVertexShader = `
   }
 `;
 
-// 프래그먼트 셰이더 - 반사/굴절 표현이 강화된 툰 셰이딩
+// 프래그먼트 셰이더 - 낮/밤 물리 기반 라이팅
 const illustrationFragmentShader = `
   uniform vec3 uColor;
   uniform vec3 uShadowColor;
   uniform vec3 uHighlightColor;
   uniform float uShadowSmooth;
   uniform float uHighlightSmooth;
+  uniform float uTimeOfDay; // 0 = 낮, 1 = 밤
 
   varying vec3 vNormal;
   varying vec3 vViewDir;
@@ -57,55 +58,73 @@ const illustrationFragmentShader = `
     vec3 normal = normalize(vNormal);
     vec3 viewDir = normalize(vViewDir);
 
-    // 다중 라이트
-    vec3 lightDir1 = normalize(vec3(0.5, 0.8, 0.3));
-    vec3 lightDir2 = normalize(vec3(-0.3, 0.5, -0.5));
+    // 낮/밤에 따른 조명 강도
+    float dayLight = 1.0 - uTimeOfDay * 0.92; // 낮: 1.0, 밤: 0.08
+    float nightAmbient = uTimeOfDay * 0.05; // 밤 최소 환경광
+
+    // 태양/달 방향 (낮: 위에서, 밤: 달빛은 약하게)
+    vec3 sunDir = normalize(vec3(0.5, 0.8, 0.3));
+    float sunIntensity = dayLight;
 
     // 디퓨즈 라이팅 (3단계 툰 셰이딩)
-    float NdotL = dot(normal, lightDir1);
+    float NdotL = dot(normal, sunDir);
     float toonShade = smoothstep(-0.1, 0.1, NdotL) * 0.5 +
                       smoothstep(0.3, 0.5, NdotL) * 0.3 +
                       smoothstep(0.7, 0.9, NdotL) * 0.2;
+    toonShade *= sunIntensity;
 
-    // 스페큘러 반사 (광택 표현)
-    vec3 halfDir = normalize(lightDir1 + viewDir);
+    // 스페큘러 반사 (광택 표현) - 밤에는 약해짐
+    vec3 halfDir = normalize(sunDir + viewDir);
     float spec = pow(max(dot(normal, halfDir), 0.0), 32.0);
-    float toonSpec = smoothstep(0.4, 0.6, spec);
+    float toonSpec = smoothstep(0.4, 0.6, spec) * sunIntensity;
 
-    // 프레넬 반사 (가장자리 광택)
+    // 프레넬 반사 (가장자리 광택) - 밤에도 약간 유지 (달빛/가로등 반사)
     float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
-    float toonFresnel = smoothstep(0.3, 0.7, fresnel);
+    float toonFresnel = smoothstep(0.3, 0.7, fresnel) * (dayLight + uTimeOfDay * 0.15);
 
-    // 색상 믹싱 - 명도 낮춤
-    vec3 shadowTint = uColor * uShadowColor * 0.6;
-    vec3 midTone = uColor * 0.85;
+    // 헤드라이트 간접광 (차량 앞부분만, 밤에만)
+    // vWorldPosition.z > 0 = 차량 앞쪽 (로컬 좌표계에서)
+    float headlightInfluence = 0.0;
+    if (uTimeOfDay > 0.3) {
+      // 앞쪽 방향으로 향하는 면만 조명
+      float frontFacing = max(0.0, normal.z);
+      // 높이가 낮은 부분 (도로면 반사)
+      float lowHeight = 1.0 - smoothstep(0.0, 1.5, vWorldPosition.y);
+      headlightInfluence = frontFacing * lowHeight * uTimeOfDay * 0.3;
+    }
+
+    // 색상 믹싱
+    vec3 shadowTint = uColor * uShadowColor * 0.4; // 밤에 더 어둡게
+    vec3 midTone = uColor * 0.75;
     vec3 highlightTint = mix(uColor, uHighlightColor, 0.25);
 
     // 3단계 툰 셰이딩
-    vec3 finalColor = shadowTint;
-    finalColor = mix(finalColor, midTone, smoothstep(0.2, 0.25, toonShade));
-    finalColor = mix(finalColor, highlightTint, smoothstep(0.6, 0.65, toonShade));
+    vec3 finalColor = shadowTint * (dayLight + nightAmbient);
+    finalColor = mix(finalColor, midTone * (dayLight + nightAmbient * 2.0), smoothstep(0.15, 0.2, toonShade));
+    finalColor = mix(finalColor, highlightTint * dayLight, smoothstep(0.5, 0.55, toonShade));
 
     // 스페큘러 하이라이트 (반사)
-    finalColor = mix(finalColor, uHighlightColor, toonSpec * 0.5);
+    finalColor = mix(finalColor, uHighlightColor * dayLight, toonSpec * 0.4);
 
-    // 림 라이팅 (윤곽 광택) - 약하게
-    finalColor += toonFresnel * uHighlightColor * 0.12;
+    // 림 라이팅 (윤곽 광택)
+    finalColor += toonFresnel * uHighlightColor * 0.08;
 
-    // 상단면 반사 - 약하게
+    // 상단면 반사 (하늘 반사) - 낮에만
     float topReflect = smoothstep(0.7, 0.9, normal.y);
-    finalColor = mix(finalColor, highlightTint, topReflect * 0.15);
+    finalColor = mix(finalColor, highlightTint * dayLight, topReflect * 0.12);
 
-    // 환경광 - 어둡게
-    vec3 ambient = uColor * vec3(0.3, 0.28, 0.25);
-    finalColor = max(finalColor, ambient);
+    // 헤드라이트 간접광 추가 (따뜻한 노란빛)
+    vec3 headlightColor = vec3(1.0, 0.95, 0.7);
+    finalColor += headlightInfluence * headlightColor * uColor;
 
-    // 채도 유지 (자연스럽게)
+    // 밤 환경광 (아주 약한 푸른빛 - 달빛)
+    vec3 moonAmbient = uColor * vec3(0.1, 0.12, 0.18) * uTimeOfDay;
+    finalColor = max(finalColor, moonAmbient);
+
+    // 채도 조절 (밤에는 채도 낮춤 - 물리적으로 정확)
     float gray = dot(finalColor, vec3(0.299, 0.587, 0.114));
-    finalColor = mix(vec3(gray), finalColor, 1.2);
-
-    // 전체 명도 살짝 낮춤
-    finalColor *= 0.92;
+    float saturation = 1.2 - uTimeOfDay * 0.4; // 낮: 1.2, 밤: 0.8
+    finalColor = mix(vec3(gray), finalColor, saturation);
 
     // 클리핑 방지
     finalColor = clamp(finalColor, 0.0, 1.0);
@@ -120,6 +139,7 @@ function createIllustrationMaterial(color: string, options?: {
   highlightColor?: THREE.Color;
   shadowSmooth?: number;
   highlightSmooth?: number;
+  timeOfDay?: number;
 }): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -128,14 +148,15 @@ function createIllustrationMaterial(color: string, options?: {
       uHighlightColor: { value: options?.highlightColor || new THREE.Color('#fff8e8') },
       uShadowSmooth: { value: options?.shadowSmooth ?? 0.3 },
       uHighlightSmooth: { value: options?.highlightSmooth ?? 0.85 },
+      uTimeOfDay: { value: options?.timeOfDay ?? 0 },
     },
     vertexShader: illustrationVertexShader,
     fragmentShader: illustrationFragmentShader,
   });
 }
 
-// 크롬/메탈 머티리얼 - 반사 느낌
-function createChromeMaterial(): THREE.ShaderMaterial {
+// 크롬/메탈 머티리얼 - 반사 느낌 (낮/밤 대응)
+function createChromeMaterial(timeOfDay: number = 0): THREE.ShaderMaterial {
   const vertexShader = `
     varying vec3 vNormal;
     varying vec3 vViewDir;
@@ -148,6 +169,7 @@ function createChromeMaterial(): THREE.ShaderMaterial {
   `;
 
   const fragmentShader = `
+    uniform float uTimeOfDay;
     varying vec3 vNormal;
     varying vec3 vViewDir;
     void main() {
@@ -155,16 +177,19 @@ function createChromeMaterial(): THREE.ShaderMaterial {
       vec3 viewDir = normalize(vViewDir);
       vec3 lightDir = normalize(vec3(0.5, 0.8, 0.3));
 
+      float dayLight = 1.0 - uTimeOfDay * 0.9;
+
       // 스페큘러 하이라이트
       vec3 halfDir = normalize(lightDir + viewDir);
-      float spec = pow(max(dot(normal, halfDir), 0.0), 60.0);
+      float spec = pow(max(dot(normal, halfDir), 0.0), 60.0) * dayLight;
 
-      // 프레넬 반사
+      // 프레넬 반사 (밤에도 약간 유지 - 가로등/달빛 반사)
       float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 2.0);
+      fresnel *= (dayLight + uTimeOfDay * 0.2);
 
-      // 기본 크롬 색상
-      vec3 baseColor = vec3(0.85, 0.83, 0.80);
-      vec3 finalColor = baseColor + spec * 0.5 + fresnel * 0.2;
+      // 기본 크롬 색상 (밤에 어두워짐)
+      vec3 baseColor = vec3(0.85, 0.83, 0.80) * (dayLight + 0.08);
+      vec3 finalColor = baseColor + spec * 0.5 + fresnel * 0.15;
 
       gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -173,6 +198,9 @@ function createChromeMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
+    uniforms: {
+      uTimeOfDay: { value: timeOfDay },
+    },
   });
 }
 
@@ -334,6 +362,7 @@ interface ProceduralCarModelProps {
   wheelFLRef: React.RefObject<THREE.Group | null>;
   wheelRRRef: React.RefObject<THREE.Group | null>;
   wheelRLRef: React.RefObject<THREE.Group | null>;
+  timeOfDay?: number;
 }
 
 const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
@@ -343,6 +372,7 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
   wheelFLRef,
   wheelRRRef,
   wheelRLRef,
+  timeOfDay = 0,
 }) => {
   // 50년대 일러스트 스타일 머티리얼
   const bodyMaterial = useMemo(
@@ -351,13 +381,14 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
       highlightColor: new THREE.Color('#fff8e8'),
       shadowSmooth: 0.25,
       highlightSmooth: 0.8,
+      timeOfDay,
     }),
-    [color]
+    [color, timeOfDay]
   );
 
   const chromeMaterial = useMemo(
-    () => createChromeMaterial(),
-    []
+    () => createChromeMaterial(timeOfDay),
+    [timeOfDay]
   );
 
   const glassMaterial = useMemo(
@@ -366,8 +397,9 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
       highlightColor: new THREE.Color('#c0d8e8'),
       shadowSmooth: 0.2,
       highlightSmooth: 0.9,
+      timeOfDay,
     }),
-    []
+    [timeOfDay]
   );
 
   const tireMaterial = useMemo(
@@ -376,8 +408,9 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
       highlightColor: new THREE.Color('#3a3a3a'),
       shadowSmooth: 0.3,
       highlightSmooth: 0.9,
+      timeOfDay,
     }),
-    []
+    [timeOfDay]
   );
 
   const tailLightMaterial = useMemo(
@@ -385,10 +418,27 @@ const ProceduralCarModel: React.FC<ProceduralCarModelProps> = ({
     []
   );
 
-  const headLightMaterial = useMemo(
-    () => new THREE.MeshBasicMaterial({ color: '#ffffdd' }),
-    []
-  );
+  // 헤드라이트 - 낮에는 유리/크롬 느낌, 밤에만 밝게
+  const headLightMaterial = useMemo(() => {
+    const isNight = timeOfDay > 0.4;
+    if (isNight) {
+      // 밤: 밝은 emissive
+      const mat = new THREE.MeshStandardMaterial({
+        color: '#fffde0',
+        emissive: '#fffde0',
+        emissiveIntensity: timeOfDay * 2,
+        toneMapped: false,
+      });
+      return mat;
+    } else {
+      // 낮: 유리/반사 느낌 (어둡게)
+      return new THREE.MeshStandardMaterial({
+        color: '#c8c8c0',
+        metalness: 0.3,
+        roughness: 0.4,
+      });
+    }
+  }, [timeOfDay]);
 
   // 차종별 파라미터
   const carParams = useMemo(() => {
@@ -702,6 +752,7 @@ const VintageCar: React.FC<CarProps> = ({
       wheelFLRef={wheelFLRef}
       wheelRRRef={wheelRRRef}
       wheelRLRef={wheelRLRef}
+      timeOfDay={timeOfDay}
     />
   );
 
@@ -715,29 +766,51 @@ const VintageCar: React.FC<CarProps> = ({
         ProceduralFallback
       )}
 
-      {/* 헤드라이트 (밤에 활성화) - Emissive 메쉬만 사용 (PointLight 제거로 성능 최적화) */}
-      {timeOfDay > 0.1 && (
+      {/* 헤드라이트 (밤에만 활성화) - Emissive로 Bloom이 처리 */}
+      {timeOfDay > 0.4 && (
         <>
-          {/* 왼쪽 헤드라이트 글로우 */}
+          {/* 왼쪽 헤드라이트 - emissive */}
           <mesh position={[-0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.15, 8, 8]} />
-            <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
+            <sphereGeometry args={[0.12, 12, 12]} />
+            <meshStandardMaterial
+              color="#fffde0"
+              emissive="#fffde0"
+              emissiveIntensity={timeOfDay * 3}
+              toneMapped={false}
+            />
           </mesh>
 
-          {/* 오른쪽 헤드라이트 글로우 */}
+          {/* 오른쪽 헤드라이트 - emissive */}
           <mesh position={[0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.15, 8, 8]} />
-            <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
+            <sphereGeometry args={[0.12, 12, 12]} />
+            <meshStandardMaterial
+              color="#fffde0"
+              emissive="#fffde0"
+              emissiveIntensity={timeOfDay * 3}
+              toneMapped={false}
+            />
           </mesh>
 
-          {/* 테일라이트 글로우 */}
+          {/* 왼쪽 테일라이트 - emissive */}
           <mesh position={[-0.5, 0.35, -2.8]}>
-            <sphereGeometry args={[0.1, 8, 8]} />
-            <meshBasicMaterial color="#ff3030" transparent opacity={timeOfDay * 0.8} />
+            <sphereGeometry args={[0.08, 10, 10]} />
+            <meshStandardMaterial
+              color="#ff2020"
+              emissive="#ff2020"
+              emissiveIntensity={timeOfDay * 2}
+              toneMapped={false}
+            />
           </mesh>
+
+          {/* 오른쪽 테일라이트 - emissive */}
           <mesh position={[0.5, 0.35, -2.8]}>
-            <sphereGeometry args={[0.1, 8, 8]} />
-            <meshBasicMaterial color="#ff3030" transparent opacity={timeOfDay * 0.8} />
+            <sphereGeometry args={[0.08, 10, 10]} />
+            <meshStandardMaterial
+              color="#ff2020"
+              emissive="#ff2020"
+              emissiveIntensity={timeOfDay * 2}
+              toneMapped={false}
+            />
           </mesh>
         </>
       )}

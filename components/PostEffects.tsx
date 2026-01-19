@@ -1,6 +1,6 @@
 import React, { useMemo, forwardRef } from 'react';
 import { useThree, extend } from '@react-three/fiber';
-import { EffectComposer, Noise, Vignette, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
+import { EffectComposer, Noise, Vignette, HueSaturation, BrightnessContrast, Bloom } from '@react-three/postprocessing';
 import { Effect, BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 
@@ -180,6 +180,15 @@ uniform vec2 resolution;
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 texelSize = thickness / resolution;
 
+  // 밝기 계산 - 광원/emissive 영역 제외
+  float brightness = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
+
+  // 밝은 영역(광원)에는 contour 적용 안함
+  if (brightness > 0.7) {
+    outputColor = inputColor;
+    return;
+  }
+
   // 8방향 샘플링으로 엣지 검출
   vec3 TL = texture2D(inputBuffer, uv + vec2(-1.0, -1.0) * texelSize).rgb;
   vec3 T  = texture2D(inputBuffer, uv + vec2( 0.0, -1.0) * texelSize).rgb;
@@ -199,8 +208,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float edge = length(gx) + length(gy);
   edge = smoothstep(0.15, 0.4, edge);
 
-  // 원래 색상의 어두운 버전으로 윤곽선 (같은 색조, 낮은 명도)
-  vec3 darkerColor = inputColor.rgb * 0.3;  // 원래 색의 30%
+  // 밝기에 따라 contour 강도 감소 (광원 근처 부드럽게)
+  float contourStrength = 1.0 - smoothstep(0.4, 0.7, brightness);
+  edge *= contourStrength;
+
+  // 원래 색상의 어두운 버전으로 윤곽선
+  vec3 darkerColor = inputColor.rgb * 0.3;
   vec3 result = mix(inputColor.rgb, darkerColor, edge * darkness);
 
   outputColor = vec4(result, inputColor.a);
@@ -353,38 +366,43 @@ const VintageColor = forwardRef<VintageColorEffect, VintageColorProps>(
 const PostEffects: React.FC = () => {
   return (
     <EffectComposer>
-      {/* Kuwahara Filter 비활성화 - 성능 최적화 (64 텍스처 샘플/픽셀 제거) */}
-      {/* <Kuwahara /> */}
+      {/* 1. Bloom - emissive 광원에서 빛 번짐 (가장 먼저) */}
+      <Bloom
+        intensity={0.8}
+        luminanceThreshold={0.75}
+        luminanceSmoothing={0.2}
+        mipmapBlur={true}
+      />
 
-      {/* 1. Contour - 윤곽선 강조 */}
-      <Contour thickness={1.0} darkness={0.85} />
+      {/* 2. Contour - 윤곽선 강조 (광원 영역 제외) */}
+      <Contour thickness={1.0} darkness={0.8} />
 
-      {/* 2. Paper Texture - 종이 텍스처 */}
-      <PaperTexture intensity={0.06} scale={50.0} />
+      {/* 3. Paper Texture - 종이 텍스처 */}
+      <PaperTexture intensity={0.05} scale={50.0} />
 
-      {/* 3. Vintage Color - 따뜻한 톤 + 채도/대비 통합 */}
-      <VintageColor warmth={0.5} fadeAmount={0.08} />
+      {/* 4. Vintage Color - 최소화 (거의 원본) */}
+      <VintageColor warmth={0.1} fadeAmount={0.02} />
 
-      {/* 4. 채도 + 대비 (값 약간 조정) */}
+      {/* 5. 채도 + 대비 - 자연스럽게 */}
       <HueSaturation
         blendFunction={BlendFunction.NORMAL}
         hue={0.0}
-        saturation={0.4}
+        saturation={0.1}
       />
 
       <BrightnessContrast
-        brightness={0.03}
-        contrast={0.18}
+        brightness={0.0}
+        contrast={0.08}
       />
 
-      {/* 5. 미세 노이즈 */}
+      {/* 6. 미세 노이즈 */}
       <Noise
         premultiply
         blendFunction={BlendFunction.SOFT_LIGHT}
-        opacity={0.1}
+        opacity={0.08}
       />
 
-      {/* 6. 비네트 */}
+      {/* 7. 비네트 */}
       <Vignette
         offset={0.35}
         darkness={0.2}
