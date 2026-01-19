@@ -13,7 +13,7 @@ interface PageProps {
 
 export const MagazinePage: React.FC<PageProps> = ({ children, pageNumber, className = '' }) => (
   <section
-    className={`relative min-h-screen py-16 px-4 md:px-8 lg:px-16 ${className}`}
+    className={`relative min-h-screen py-8 sm:py-12 md:py-16 px-3 sm:px-4 md:px-8 lg:px-16 ${className}`}
     style={{ backgroundColor: EDITORIAL_COLORS.paper }}
   >
     <div className="max-w-5xl mx-auto">
@@ -21,7 +21,7 @@ export const MagazinePage: React.FC<PageProps> = ({ children, pageNumber, classN
     </div>
     {pageNumber && (
       <div
-        className="absolute bottom-4 right-8 text-sm"
+        className="absolute bottom-2 sm:bottom-4 right-4 sm:right-8 text-xs sm:text-sm"
         style={{ color: EDITORIAL_COLORS.inkLight, fontFamily: "Georgia, serif" }}
       >
         {pageNumber}
@@ -405,19 +405,18 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   className = ''
 }) => (
   <div
-    className={`flex justify-between items-center pb-4 mb-8 border-b-2 ${className}`}
+    className={`flex justify-between items-center pb-2 sm:pb-4 mb-4 sm:mb-8 border-b-2 text-[9px] sm:text-[11px] ${className}`}
     style={{
       borderColor: EDITORIAL_COLORS.border,
       fontFamily: "Arial, sans-serif",
-      fontSize: '11px',
       color: EDITORIAL_COLORS.inkLight,
       textTransform: 'uppercase',
-      letterSpacing: '0.15em',
+      letterSpacing: '0.1em',
     }}
   >
-    <span>{left}</span>
+    <span className="hidden sm:inline">{left}</span>
     <span className="font-bold">{center}</span>
-    <span>{right}</span>
+    <span className="hidden sm:inline">{right}</span>
   </div>
 );
 
@@ -428,15 +427,14 @@ export const PageFooter: React.FC<PageHeaderProps> = ({
   className = ''
 }) => (
   <div
-    className={`flex justify-between items-center pt-4 mt-8 border-t ${className}`}
+    className={`flex justify-between items-center pt-2 sm:pt-4 mt-4 sm:mt-8 border-t text-[9px] sm:text-[11px] ${className}`}
     style={{
       borderColor: EDITORIAL_COLORS.border,
       fontFamily: "Arial, sans-serif",
-      fontSize: '11px',
       color: EDITORIAL_COLORS.inkLight,
     }}
   >
-    <span>{left}</span>
+    <span className="hidden sm:inline">{left}</span>
     <span>{center}</span>
     <span className="font-bold">{right}</span>
   </div>

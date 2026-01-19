@@ -160,8 +160,8 @@ export const TableOfContents: React.FC = () => (
         </Box>
       </div>
 
-      {/* Right Column - Featured Article Preview */}
-      <div>
+      {/* Right Column - Featured Article Preview (모바일에서 숨김) */}
+      <div className="hidden md:block">
         <div
           className="p-6 mb-6"
           style={{
@@ -430,8 +430,8 @@ export const AdvertisementSection: React.FC<AdSectionProps> = ({ layout = 'split
         {/* Left Ad - Gale */}
         {galeAd && (
           <div
-            className="p-6"
-            style={{ borderRight: `1px solid ${EDITORIAL_COLORS.border}` }}
+            className="p-4 sm:p-6 md:border-r"
+            style={{ borderColor: EDITORIAL_COLORS.border }}
           >
             <div
               className="mb-6 flex items-center justify-center"
@@ -474,8 +474,8 @@ export const AdvertisementSection: React.FC<AdSectionProps> = ({ layout = 'split
           </div>
         )}
 
-        {/* Right Ad - Black & Decker Style */}
-        <div className="p-6">
+        {/* Right Ad - Black & Decker Style (모바일에서 숨김) */}
+        <div className="hidden md:block p-6">
           <Box variant="highlight" className="mb-6">
             <h3
               className="text-lg font-black uppercase leading-tight"
@@ -589,8 +589,8 @@ export const EditorialColumn: React.FC = () => (
         ))}
       </div>
 
-      {/* Education Ad */}
-      <div>
+      {/* Education Ad (모바일에서 숨김) */}
+      <div className="hidden md:block">
         <div
           className="p-6"
           style={{

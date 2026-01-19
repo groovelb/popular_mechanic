@@ -50,8 +50,10 @@ function App() {
         {/* Editorial Column */}
         <EditorialColumn />
 
-        {/* Second Article */}
-        <ArticleSection articleId="car-stylists" />
+        {/* Second Article (모바일에서 숨김) */}
+        <div className="hidden md:block">
+          <ArticleSection articleId="car-stylists" />
+        </div>
 
         {/* FOOTER */}
         <footer
