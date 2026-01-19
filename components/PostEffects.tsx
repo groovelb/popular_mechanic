@@ -353,42 +353,41 @@ const VintageColor = forwardRef<VintageColorEffect, VintageColorProps>(
 const PostEffects: React.FC = () => {
   return (
     <EffectComposer>
-      {/* 1. Kuwahara Filter - 페인팅 효과 */}
-      <Kuwahara />
+      {/* Kuwahara Filter 비활성화 - 성능 최적화 (64 텍스처 샘플/픽셀 제거) */}
+      {/* <Kuwahara /> */}
 
-      {/* 2. Contour - 윤곽선 강조 (얇지만 진하게) */}
-      <Contour thickness={1.0} darkness={0.9} />
+      {/* 1. Contour - 윤곽선 강조 */}
+      <Contour thickness={1.0} darkness={0.85} />
 
-      {/* 3. Paper Texture - 종이 텍스처 */}
-      <PaperTexture intensity={0.08} scale={60.0} />
+      {/* 2. Paper Texture - 종이 텍스처 */}
+      <PaperTexture intensity={0.06} scale={50.0} />
 
-      {/* 4. Vintage Color - 따뜻한 톤 */}
-      <VintageColor warmth={0.4} fadeAmount={0.1} />
+      {/* 3. Vintage Color - 따뜻한 톤 + 채도/대비 통합 */}
+      <VintageColor warmth={0.5} fadeAmount={0.08} />
 
-      {/* 5. 채도 높임 - 선명한 색상 */}
+      {/* 4. 채도 + 대비 (값 약간 조정) */}
       <HueSaturation
         blendFunction={BlendFunction.NORMAL}
         hue={0.0}
-        saturation={0.35}
+        saturation={0.4}
       />
 
-      {/* 6. 밝기/대비 강화 */}
       <BrightnessContrast
-        brightness={0.05}
-        contrast={0.15}
+        brightness={0.03}
+        contrast={0.18}
       />
 
-      {/* 7. 미세 노이즈 */}
+      {/* 5. 미세 노이즈 */}
       <Noise
         premultiply
         blendFunction={BlendFunction.SOFT_LIGHT}
-        opacity={0.12}
+        opacity={0.1}
       />
 
-      {/* 8. 비네트 */}
+      {/* 6. 비네트 */}
       <Vignette
-        offset={0.4}
-        darkness={0.25}
+        offset={0.35}
+        darkness={0.2}
         eskil={false}
         blendFunction={BlendFunction.NORMAL}
       />

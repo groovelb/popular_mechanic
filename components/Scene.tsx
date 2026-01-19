@@ -166,12 +166,12 @@ const IllustrationScene: React.FC<SceneProps> = ({ mode, timeOfDay = 0 }) => {
         intensity={mainIntensity}
         color={lerpColor(dayColors.main, nightColors.main, timeOfDay)}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={200}
-        shadow-camera-left={-80}
-        shadow-camera-right={80}
-        shadow-camera-top={80}
-        shadow-camera-bottom={-80}
+        shadow-mapSize={[512, 512]}
+        shadow-camera-far={150}
+        shadow-camera-left={-60}
+        shadow-camera-right={60}
+        shadow-camera-top={60}
+        shadow-camera-bottom={-60}
       />
       {/* Fill light */}
       <directionalLight

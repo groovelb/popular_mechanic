@@ -705,10 +705,6 @@ const VintageCar: React.FC<CarProps> = ({
     />
   );
 
-  // 헤드라이트 강도 (밤에 밝아짐)
-  const headlightIntensity = timeOfDay * 15;
-  const taillightIntensity = timeOfDay * 5;
-
   return (
     <group ref={groupRef}>
       {useGLTFModel ? (
@@ -719,43 +715,30 @@ const VintageCar: React.FC<CarProps> = ({
         ProceduralFallback
       )}
 
-      {/* 헤드라이트 (밤에 활성화) */}
+      {/* 헤드라이트 (밤에 활성화) - Emissive 메쉬만 사용 (PointLight 제거로 성능 최적화) */}
       {timeOfDay > 0.1 && (
         <>
-          {/* 왼쪽 헤드라이트 */}
-          <pointLight
-            position={[-0.65, 0.4, 2.2]}
-            color="#fffde0"
-            intensity={headlightIntensity}
-            distance={30}
-            decay={2}
-          />
+          {/* 왼쪽 헤드라이트 글로우 */}
           <mesh position={[-0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.15, 16, 16]} />
+            <sphereGeometry args={[0.15, 8, 8]} />
             <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
           </mesh>
 
-          {/* 오른쪽 헤드라이트 */}
-          <pointLight
-            position={[0.65, 0.4, 2.2]}
-            color="#fffde0"
-            intensity={headlightIntensity}
-            distance={30}
-            decay={2}
-          />
+          {/* 오른쪽 헤드라이트 글로우 */}
           <mesh position={[0.65, 0.4, 2.25]}>
-            <sphereGeometry args={[0.15, 16, 16]} />
+            <sphereGeometry args={[0.15, 8, 8]} />
             <meshBasicMaterial color="#fffde0" transparent opacity={timeOfDay * 0.9} />
           </mesh>
 
-          {/* 테일라이트 */}
-          <pointLight
-            position={[0, 0.4, -2.5]}
-            color="#ff3030"
-            intensity={taillightIntensity}
-            distance={10}
-            decay={2}
-          />
+          {/* 테일라이트 글로우 */}
+          <mesh position={[-0.5, 0.35, -2.8]}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+            <meshBasicMaterial color="#ff3030" transparent opacity={timeOfDay * 0.8} />
+          </mesh>
+          <mesh position={[0.5, 0.35, -2.8]}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+            <meshBasicMaterial color="#ff3030" transparent opacity={timeOfDay * 0.8} />
+          </mesh>
         </>
       )}
     </group>

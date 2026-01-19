@@ -719,7 +719,8 @@ const Terrain: React.FC = () => {
 const Stars: React.FC<{ opacity: number }> = ({ opacity }) => {
   const stars = useMemo(() => {
     const positions: Array<{ pos: [number, number, number]; size: number }> = [];
-    for (let i = 0; i < 200; i++) {
+    // 200 → 50개로 축소 (성능 최적화)
+    for (let i = 0; i < 50; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.random() * Math.PI * 0.5;
       const r = 400;
@@ -729,7 +730,7 @@ const Stars: React.FC<{ opacity: number }> = ({ opacity }) => {
           r * Math.cos(phi) + 50,
           r * Math.sin(phi) * Math.sin(theta) - 200,
         ],
-        size: 0.5 + Math.random() * 0.5,
+        size: 0.6 + Math.random() * 0.8, // 약간 더 크게 (적은 수 보완)
       });
     }
     return positions;
@@ -745,34 +746,16 @@ const Stars: React.FC<{ opacity: number }> = ({ opacity }) => {
           <meshBasicMaterial color="#ffffff" transparent opacity={opacity} />
         </mesh>
       ))}
-      {/* 달 - 메인 */}
+      {/* 달 - 메인 (세그먼트 축소 32→16) */}
       <mesh position={[100, 150, -300]}>
-        <sphereGeometry args={[15, 32, 32]} />
+        <sphereGeometry args={[15, 16, 16]} />
         <meshBasicMaterial color="#fffde8" transparent opacity={opacity} />
       </mesh>
-      {/* 달 글로우 - 외곽 발광 효과 (여러 레이어) */}
+      {/* 달 글로우 - 단일 레이어로 단순화 */}
       <mesh position={[100, 150, -301]}>
-        <sphereGeometry args={[22, 32, 32]} />
-        <meshBasicMaterial color="#fffde8" transparent opacity={opacity * 0.25} />
+        <sphereGeometry args={[25, 12, 12]} />
+        <meshBasicMaterial color="#fffde8" transparent opacity={opacity * 0.2} />
       </mesh>
-      <mesh position={[100, 150, -302]}>
-        <sphereGeometry args={[30, 32, 32]} />
-        <meshBasicMaterial color="#ffe8b8" transparent opacity={opacity * 0.12} />
-      </mesh>
-      <mesh position={[100, 150, -303]}>
-        <sphereGeometry args={[45, 32, 32]} />
-        <meshBasicMaterial color="#ffd890" transparent opacity={opacity * 0.06} />
-      </mesh>
-      {/* 달빛 - 환경광 효과 */}
-      {opacity > 0.5 && (
-        <pointLight
-          position={[100, 150, -250]}
-          color="#e8e0d0"
-          intensity={opacity * 0.3}
-          distance={500}
-          decay={2}
-        />
-      )}
     </group>
   );
 };
