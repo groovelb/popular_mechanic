@@ -13,12 +13,36 @@ const CameraRig = ({ mode }: { mode: AnimationState }) => {
   const mousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    // 마우스 이벤트
     const handleMouseMove = (e: MouseEvent) => {
       mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
     };
+
+    // 터치 이벤트 (모바일 지원)
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        mousePos.current.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        mousePos.current.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      // 터치 종료 시 중앙으로 서서히 복귀
+      mousePos.current.x *= 0.95;
+      mousePos.current.y *= 0.95;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
   }, []);
 
   useFrame((state) => {
