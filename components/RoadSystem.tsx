@@ -3,23 +3,24 @@ import * as THREE from 'three';
 import { PALETTE } from '../types';
 
 // Create the main curved highway path
-// Curves from bottom-right to top-left (matching reference)
+// 우상(오른쪽 뒤) → 중앙(왼쪽으로 볼록) → 우하(오른쪽 앞, 카메라 쪽)
 export const createHighwayCurve = () => {
   return new THREE.CatmullRomCurve3([
-    new THREE.Vector3(25, 0, 60),      // Start: right side, close to camera
-    new THREE.Vector3(15, 0, 40),      // Curve begins
-    new THREE.Vector3(5, 0, 20),       // Middle section
-    new THREE.Vector3(-5, 0, 0),       // Center
-    new THREE.Vector3(-15, 0, -25),    // Curving left
-    new THREE.Vector3(-25, 0, -50),    // Far left
-    new THREE.Vector3(-35, 0, -80),    // Vanishing point direction
-  ], false, 'catmullrom', 0.5);
+    new THREE.Vector3(30, 0, -80),     // 시작: 우상 (오른쪽, 멀리)
+    new THREE.Vector3(20, 0, -60),
+    new THREE.Vector3(5, 0, -40),      // 왼쪽으로 커브 시작
+    new THREE.Vector3(-10, 0, -20),    // 가장 왼쪽 지점
+    new THREE.Vector3(-5, 0, 0),
+    new THREE.Vector3(5, 0, 20),       // 다시 오른쪽으로
+    new THREE.Vector3(15, 0, 40),
+    new THREE.Vector3(20, 0, 60),      // 끝: 우하 (오른쪽, 카메라 쪽)
+  ], false, 'catmullrom', 0.3);
 };
 
 // Curved Highway using the curve path
 const CurvedHighway: React.FC = () => {
   const curve = useMemo(() => createHighwayCurve(), []);
-  const roadWidth = 40;
+  const roadWidth = 36;
   const segments = 100;
 
   // Generate road surface geometry following the curve
@@ -36,12 +37,8 @@ const CurvedHighway: React.FC = () => {
       // Get perpendicular vector (for road width)
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-      // Road gets narrower with perspective (simulating depth)
-      const perspectiveScale = 1 - t * 0.6; // Wider at front, narrower at back
-      const width = roadWidth * perspectiveScale;
-
-      const left = point.clone().add(normal.clone().multiplyScalar(-width / 2));
-      const right = point.clone().add(normal.clone().multiplyScalar(width / 2));
+      const left = point.clone().add(normal.clone().multiplyScalar(-roadWidth / 2));
+      const right = point.clone().add(normal.clone().multiplyScalar(roadWidth / 2));
 
       positions.push(left.x, 0.01, left.z);
       positions.push(right.x, 0.01, right.z);
@@ -69,73 +66,53 @@ const CurvedHighway: React.FC = () => {
     return geometry;
   }, [curve, segments, roadWidth]);
 
-  // Lane markings following the curve
-  const laneMarkings = useMemo(() => {
-    const markings: JSX.Element[] = [];
-    const lanes = 6;
+  // 중앙선 (노란색 실선)
+  const centerLine = useMemo(() => {
+    const lines: JSX.Element[] = [];
 
-    // Create dashed lines for each lane
-    for (let lane = 1; lane < lanes; lane++) {
-      const laneOffset = (lane / lanes - 0.5) * roadWidth;
+    for (let i = 0; i < segments; i += 1) {
+      const t = i / segments;
+      const t2 = Math.min((i + 1) / segments, 1);
 
-      for (let i = 0; i < segments; i += 4) {
-        const t = i / segments;
-        const t2 = Math.min((i + 2) / segments, 1);
+      const point1 = curve.getPointAt(t);
+      const point2 = curve.getPointAt(t2);
 
-        const point1 = curve.getPointAt(t);
-        const point2 = curve.getPointAt(t2);
-        const tangent = curve.getTangentAt(t);
-        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const midPoint = point1.clone().add(point2).multiplyScalar(0.5);
+      const length = point1.distanceTo(point2);
+      const angle = Math.atan2(point2.x - point1.x, point2.z - point1.z);
 
-        const perspectiveScale = 1 - t * 0.6;
-        const offset = laneOffset * perspectiveScale;
-
-        const pos1 = point1.clone().add(normal.clone().multiplyScalar(offset));
-        const pos2 = point2.clone().add(normal.clone().multiplyScalar(offset));
-
-        const midPoint = pos1.clone().add(pos2).multiplyScalar(0.5);
-        const length = pos1.distanceTo(pos2);
-        const angle = Math.atan2(pos2.x - pos1.x, pos2.z - pos1.z);
-
-        const isCenterLine = lane === 3;
-        const lineWidth = (isCenterLine ? 0.4 : 0.2) * perspectiveScale;
-
-        markings.push(
-          <mesh
-            key={`lane-${lane}-${i}`}
-            position={[midPoint.x, 0.02, midPoint.z]}
-            rotation={[-Math.PI / 2, 0, -angle]}
-          >
-            <planeGeometry args={[lineWidth, length * 0.6]} />
-            <meshBasicMaterial
-              color={isCenterLine ? '#f0e8d0' : '#d0c8b8'}
-              transparent
-              opacity={0.9 - t * 0.5}
-            />
-          </mesh>
-        );
-      }
+      lines.push(
+        <mesh
+          key={`center-${i}`}
+          position={[midPoint.x, 0.02, midPoint.z]}
+          rotation={[-Math.PI / 2, -angle, 0]}
+        >
+          <planeGeometry args={[0.3, length * 1.1]} />
+          <meshBasicMaterial color="#f0c040" />
+        </mesh>
+      );
     }
 
-    return markings;
-  }, [curve, segments, roadWidth]);
+    return lines;
+  }, [curve, segments]);
 
-  // Road edge lines
+  // 레퍼런스 이미지에는 차선 구분선 없음 - 중앙선만 존재
+
+  // Road edge lines (흰색 실선)
   const edgeLines = useMemo(() => {
     const edges: JSX.Element[] = [];
 
     [-1, 1].forEach((side, sideIdx) => {
-      for (let i = 0; i < segments; i += 2) {
+      for (let i = 0; i < segments; i += 1) {
         const t = i / segments;
-        const t2 = Math.min((i + 2) / segments, 1);
+        const t2 = Math.min((i + 1) / segments, 1);
 
         const point1 = curve.getPointAt(t);
         const point2 = curve.getPointAt(t2);
         const tangent = curve.getTangentAt(t);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-        const perspectiveScale = 1 - t * 0.6;
-        const offset = (roadWidth / 2 - 0.5) * perspectiveScale * side;
+        const offset = (roadWidth / 2 - 0.3) * side;
 
         const pos1 = point1.clone().add(normal.clone().multiplyScalar(offset));
         const pos2 = point2.clone().add(normal.clone().multiplyScalar(offset));
@@ -148,10 +125,10 @@ const CurvedHighway: React.FC = () => {
           <mesh
             key={`edge-${sideIdx}-${i}`}
             position={[midPoint.x, 0.02, midPoint.z]}
-            rotation={[-Math.PI / 2, 0, -angle]}
+            rotation={[-Math.PI / 2, -angle, 0]}
           >
-            <planeGeometry args={[0.3 * perspectiveScale, length]} />
-            <meshBasicMaterial color="#f0e8d0" transparent opacity={0.8 - t * 0.4} />
+            <planeGeometry args={[0.25, length * 1.1]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
         );
       }
@@ -171,88 +148,29 @@ const CurvedHighway: React.FC = () => {
         />
       </mesh>
 
-      {/* Lane markings */}
-      {laneMarkings}
+      {/* 중앙선 (노란색) - 레퍼런스 이미지처럼 중앙선만 */}
+      {centerLine}
 
-      {/* Edge lines */}
+      {/* 도로 가장자리 (흰색) */}
       {edgeLines}
     </group>
   );
 };
 
-// Elevated overpass - adjusted angle to match reference
-const Overpass: React.FC = () => {
-  return (
-    <group position={[-10, 10, -40]}>
-      {/* Main deck - angled from left to right */}
-      <mesh rotation={[0, Math.PI * 0.25, 0]}>
-        <boxGeometry args={[70, 0.8, 12]} />
-        <meshStandardMaterial color="#a89a8a" roughness={0.8} />
-      </mesh>
-
-      {/* Support pillars */}
-      {[-25, 0, 25].map((x, i) => (
-        <group key={i} position={[x * Math.cos(Math.PI * 0.25), -5, x * Math.sin(Math.PI * 0.25)]}>
-          <mesh>
-            <boxGeometry args={[2.5, 10, 2.5]} />
-            <meshStandardMaterial color="#8a7b6a" roughness={0.9} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Guard rails */}
-      <mesh position={[0, 0.8, -5.5]} rotation={[0, Math.PI * 0.25, 0]}>
-        <boxGeometry args={[72, 0.6, 0.3]} />
-        <meshStandardMaterial color="#7a6b5a" />
-      </mesh>
-      <mesh position={[0, 0.8, 5.5]} rotation={[0, Math.PI * 0.25, 0]}>
-        <boxGeometry args={[72, 0.6, 0.3]} />
-        <meshStandardMaterial color="#7a6b5a" />
-      </mesh>
-    </group>
-  );
-};
-
-// Second overpass - higher, different angle
-const Overpass2: React.FC = () => {
-  return (
-    <group position={[5, 14, -50]} rotation={[0, -Math.PI * 0.15, 0]}>
-      {/* Main deck */}
-      <mesh>
-        <boxGeometry args={[55, 0.8, 10]} />
-        <meshStandardMaterial color="#b8a898" roughness={0.8} />
-      </mesh>
-
-      {/* Support pillars */}
-      {[-20, 0, 20].map((x, i) => (
-        <mesh key={i} position={[x, -7, 0]}>
-          <boxGeometry args={[2, 14, 2]} />
-          <meshStandardMaterial color="#9a8b7a" roughness={0.9} />
-        </mesh>
-      ))}
-
-      {/* Guard rails */}
-      <mesh position={[0, 0.7, -4.5]}>
-        <boxGeometry args={[57, 0.5, 0.25]} />
-        <meshStandardMaterial color="#8a7b6a" />
-      </mesh>
-    </group>
-  );
-};
-
-// Background city silhouette
+// Background city silhouette - 왼쪽에 배치 (도로가 왼쪽으로 휘어지므로)
 const CityBackground: React.FC = () => {
   const buildings = useMemo(() => {
     const builds: JSX.Element[] = [];
-    // Buildings positioned towards the left (where vanishing point is)
     const positions = [
-      { x: -50, z: -70, w: 18, h: 45, d: 18 },
-      { x: -35, z: -80, w: 14, h: 60, d: 14 },
-      { x: -20, z: -75, w: 20, h: 40, d: 20 },
-      { x: -60, z: -90, w: 16, h: 70, d: 16 },
-      { x: -5, z: -85, w: 12, h: 35, d: 12 },
-      { x: 15, z: -80, w: 15, h: 50, d: 15 },
-      { x: -75, z: -85, w: 22, h: 55, d: 18 },
+      { x: -50, z: -60, w: 18, h: 50, d: 18 },
+      { x: -35, z: -70, w: 14, h: 65, d: 14 },
+      { x: -60, z: -40, w: 20, h: 45, d: 20 },
+      { x: -70, z: -55, w: 16, h: 75, d: 16 },
+      { x: -45, z: -30, w: 12, h: 40, d: 12 },
+      { x: -25, z: -50, w: 15, h: 55, d: 15 },
+      { x: -80, z: -45, w: 22, h: 60, d: 18 },
+      { x: 40, z: -70, w: 16, h: 45, d: 16 },
+      { x: 55, z: -60, w: 14, h: 55, d: 14 },
     ];
 
     positions.forEach((p, i) => {
@@ -276,19 +194,10 @@ const CityBackground: React.FC = () => {
 // Ground/terrain around the road
 const Terrain: React.FC = () => {
   return (
-    <>
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-        <planeGeometry args={[300, 300]} />
-        <meshStandardMaterial color="#9a9080" roughness={1} />
-      </mesh>
-
-      {/* Road shoulders */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <planeGeometry args={[300, 300]} />
-        <meshStandardMaterial color="#8a8070" roughness={1} transparent opacity={0.5} />
-      </mesh>
-    </>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+      <planeGeometry args={[400, 400]} />
+      <meshStandardMaterial color="#8a8070" roughness={1} />
+    </mesh>
   );
 };
 
@@ -298,12 +207,10 @@ const RoadSystem: React.FC = () => {
     <group>
       <Terrain />
       <CurvedHighway />
-      <Overpass />
-      <Overpass2 />
       <CityBackground />
     </group>
   );
 };
 
 export default RoadSystem;
-export { CurvedHighway, Overpass, CityBackground };
+export { CurvedHighway, CityBackground };

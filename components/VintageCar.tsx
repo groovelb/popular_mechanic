@@ -6,7 +6,7 @@ import { PALETTE } from '../types';
 interface CarProps {
   curve: THREE.CatmullRomCurve3;
   laneOffset: number;     // -1 to 1 (left to right across road)
-  startT: number;         // 0 to 1 position along curve
+  startT: number;         // 0 to 1 position along curve (0=멀리, 1=카메라 근처)
   speed?: number;
   color?: string;
   carType?: 'sedan' | 'convertible' | 'coupe';
@@ -26,7 +26,7 @@ const VintageCar: React.FC<CarProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const progress = useRef(startT);
 
-  const roadWidth = 40;
+  const roadWidth = 36;
 
   // Materials
   const bodyMaterial = useMemo(
@@ -74,15 +74,14 @@ const VintageCar: React.FC<CarProps> = ({
     []
   );
 
-  // Animation - move along curve
+  // Animation - 차가 카메라 쪽으로 다가옴 (t 증가)
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
-    // Move along curve (towards camera = decreasing t... but we want them coming towards us)
-    // Actually let's move forward along the curve and loop
-    progress.current += speed * delta * 0.02;
+    // t가 증가하면 카메라에 가까워짐 (우상→우하)
+    progress.current += speed * delta * 0.015;
     if (progress.current > 1) {
-      progress.current = 0;
+      progress.current = 0; // 다시 멀리서 시작
     }
 
     const t = progress.current;
@@ -91,22 +90,18 @@ const VintageCar: React.FC<CarProps> = ({
 
     // Calculate perpendicular for lane offset
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-    // Apply perspective scaling to lane offset
-    const perspectiveScale = 1 - t * 0.6;
-    const offset = laneOffset * (roadWidth / 2) * perspectiveScale * 0.8;
+    const offset = laneOffset * (roadWidth / 2) * 0.8;
 
     const position = point.clone().add(normal.clone().multiplyScalar(offset));
     position.y = 0.6;
 
     groupRef.current.position.copy(position);
+    groupRef.current.scale.setScalar(scale);
 
-    // Scale car based on distance (perspective)
-    const carScale = scale * (1 - t * 0.5);
-    groupRef.current.scale.setScalar(carScale);
-
-    // Face direction of travel (looking forward along curve)
-    const lookTarget = point.clone().add(tangent.clone().multiplyScalar(5));
+    // 차가 진행 방향을 바라봄
+    // lookAt은 -Z를 타겟으로 향하게 하므로, 차의 앞면(+Z)이 진행방향을 향하려면
+    // tangent 반대 방향을 lookAt해야 함
+    const lookTarget = point.clone().sub(tangent.clone().multiplyScalar(10));
     lookTarget.y = 0.6;
     groupRef.current.lookAt(lookTarget);
   });
@@ -122,7 +117,7 @@ const VintageCar: React.FC<CarProps> = ({
         <boxGeometry args={[2.2, 0.6, 5.5]} />
       </mesh>
 
-      {/* Hood (front) - long 50s style */}
+      {/* Hood (front) - long 50s style - 앞쪽(+Z) */}
       <mesh material={bodyMaterial} position={[0, 0.5, 1.8]} castShadow>
         <boxGeometry args={[2.0, 0.3, 2.2]} />
       </mesh>
@@ -132,7 +127,7 @@ const VintageCar: React.FC<CarProps> = ({
         <boxGeometry args={[1.9, 0.2, 1.0]} />
       </mesh>
 
-      {/* Trunk (rear) */}
+      {/* Trunk (rear) - 뒤쪽(-Z) */}
       <mesh material={bodyMaterial} position={[0, 0.5, -1.8]} castShadow>
         <boxGeometry args={[2.0, 0.4, 1.5]} />
       </mesh>
@@ -150,12 +145,12 @@ const VintageCar: React.FC<CarProps> = ({
             <boxGeometry args={[1.7, 0.2, 1.8]} />
           </mesh>
 
-          {/* Windows - front */}
+          {/* Windows - front (앞 유리) */}
           <mesh material={glassMaterial} position={[0, 1.0, 0.95]} rotation={[0.3, 0, 0]}>
             <planeGeometry args={[1.5, 0.5]} />
           </mesh>
 
-          {/* Windows - rear */}
+          {/* Windows - rear (뒷 유리) */}
           <mesh material={glassMaterial} position={[0, 1.0, -0.95]} rotation={[-0.3, Math.PI, 0]}>
             <planeGeometry args={[1.4, 0.45]} />
           </mesh>
@@ -175,8 +170,8 @@ const VintageCar: React.FC<CarProps> = ({
             <boxGeometry args={[1.9, 0.3, 1.8]} />
           </mesh>
 
-          {/* Windshield frame */}
-          <mesh material={chromeMaterial} position={[0, 1.1, 0.9]} rotation={[0.4, 0, 0]}>
+          {/* Windshield frame (앞 유리) */}
+          <mesh material={glassMaterial} position={[0, 1.1, 0.9]} rotation={[0.4, 0, 0]}>
             <boxGeometry args={[1.8, 0.5, 0.08]} />
           </mesh>
 
@@ -188,14 +183,13 @@ const VintageCar: React.FC<CarProps> = ({
         </>
       )}
 
-      {/* === ICONIC 1959 TAIL FINS === */}
+      {/* === ICONIC 1959 TAIL FINS (뒤쪽, -Z) === */}
 
       {/* Right tail fin */}
       <group position={[0.85, 0.9, -2.3]}>
         <mesh material={bodyMaterial} castShadow>
           <boxGeometry args={[0.15, 0.6, 0.8]} />
         </mesh>
-        {/* Fin top point */}
         <mesh material={bodyMaterial} position={[0, 0.35, -0.2]} rotation={[0.3, 0, 0]} castShadow>
           <boxGeometry args={[0.12, 0.3, 0.5]} />
         </mesh>
@@ -222,7 +216,7 @@ const VintageCar: React.FC<CarProps> = ({
 
       {/* === CHROME DETAILS === */}
 
-      {/* Front bumper */}
+      {/* Front bumper (앞 범퍼, +Z) */}
       <mesh material={chromeMaterial} position={[0, 0.25, 2.85]} castShadow>
         <boxGeometry args={[2.3, 0.25, 0.15]} />
       </mesh>
@@ -232,17 +226,17 @@ const VintageCar: React.FC<CarProps> = ({
         <boxGeometry args={[1.6, 0.35, 0.1]} />
       </mesh>
 
-      {/* Headlights */}
-      <mesh position={[0.7, 0.45, 2.75]}>
+      {/* Headlights (앞쪽) */}
+      <mesh position={[0.7, 0.45, 2.78]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
-        <meshStandardMaterial color="#ffffee" emissive="#ffffaa" emissiveIntensity={0.2} />
+        <meshStandardMaterial color="#ffffee" emissive="#ffffaa" emissiveIntensity={0.5} />
       </mesh>
-      <mesh position={[-0.7, 0.45, 2.75]}>
+      <mesh position={[-0.7, 0.45, 2.78]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
-        <meshStandardMaterial color="#ffffee" emissive="#ffffaa" emissiveIntensity={0.2} />
+        <meshStandardMaterial color="#ffffee" emissive="#ffffaa" emissiveIntensity={0.5} />
       </mesh>
 
-      {/* Rear bumper */}
+      {/* Rear bumper (뒷 범퍼, -Z) */}
       <mesh material={chromeMaterial} position={[0, 0.25, -2.7]} castShadow>
         <boxGeometry args={[2.2, 0.2, 0.12]} />
       </mesh>

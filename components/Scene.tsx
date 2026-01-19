@@ -65,36 +65,37 @@ const SkyBackground: React.FC = () => {
 };
 
 // Traffic configuration - cars following the curved road
+// 도로: 우상(t=0, 멀리) → 중앙(왼쪽 볼록) → 우하(t=1, 카메라 근처)
+// 차량: t가 증가하면서 카메라 쪽으로 다가옴
 const TrafficFlow: React.FC<{ curve: THREE.CatmullRomCurve3 }> = ({ curve }) => {
-  // Cars arranged across 6 lanes (-0.8 to 0.8 offset range)
-  // startT: 0 = far end (vanishing point), 1 = close to camera
-  // Lower startT = further away, higher = closer
+  // startT: 0 = 우상(멀리, 소실점), 1 = 우하(카메라 근처)
+  // 차들이 카메라를 향해 다가오므로 앞면(헤드라이트, 그릴)이 보임
 
   const cars = [
-    // === FOREGROUND - Hero Red Convertible (closest to camera) ===
-    { laneOffset: 0.2, startT: 0.05, speed: 0.8, color: PALETTE.coralRed, carType: 'convertible' as const, scale: 1.2 },
+    // === 전경 - 히어로 빨간 컨버터블 (카메라에 가장 가까움) ===
+    { laneOffset: 0.15, startT: 0.88, speed: 0.6, color: PALETTE.coralRed, carType: 'convertible' as const, scale: 1.3 },
 
-    // === NEAR FOREGROUND ===
-    { laneOffset: 0.6, startT: 0.12, speed: 0.9, color: PALETTE.creamYellow, carType: 'sedan' as const, scale: 1.1 },
-    { laneOffset: -0.3, startT: 0.15, speed: 0.85, color: PALETTE.peach, carType: 'sedan' as const, scale: 1.1 },
-    { laneOffset: 0.8, startT: 0.18, speed: 0.95, color: PALETTE.ivory, carType: 'sedan' as const, scale: 1.0 },
+    // === 근경 ===
+    { laneOffset: 0.55, startT: 0.78, speed: 0.7, color: PALETTE.creamYellow, carType: 'sedan' as const, scale: 1.15 },
+    { laneOffset: -0.25, startT: 0.75, speed: 0.65, color: PALETTE.peach, carType: 'sedan' as const, scale: 1.1 },
+    { laneOffset: -0.6, startT: 0.72, speed: 0.75, color: PALETTE.ivory, carType: 'sedan' as const, scale: 1.05 },
 
-    // === MIDDLE GROUND ===
-    { laneOffset: -0.6, startT: 0.25, speed: 1.0, color: PALETTE.skyBlue, carType: 'sedan' as const, scale: 1.0 },
-    { laneOffset: 0.4, startT: 0.28, speed: 0.9, color: PALETTE.mintGreen, carType: 'sedan' as const, scale: 1.0 },
-    { laneOffset: -0.1, startT: 0.32, speed: 1.1, color: PALETTE.darkBlue, carType: 'sedan' as const, scale: 0.95 },
-    { laneOffset: 0.7, startT: 0.35, speed: 0.85, color: PALETTE.orange, carType: 'sedan' as const, scale: 0.95 },
+    // === 중경 ===
+    { laneOffset: 0.35, startT: 0.62, speed: 0.8, color: PALETTE.skyBlue, carType: 'sedan' as const, scale: 1.0 },
+    { laneOffset: -0.45, startT: 0.58, speed: 0.85, color: PALETTE.mintGreen, carType: 'sedan' as const, scale: 0.95 },
+    { laneOffset: 0.7, startT: 0.55, speed: 0.9, color: PALETTE.darkBlue, carType: 'sedan' as const, scale: 0.9 },
+    { laneOffset: -0.1, startT: 0.50, speed: 0.75, color: PALETTE.orange, carType: 'sedan' as const, scale: 0.9 },
 
-    // === BACKGROUND ===
-    { laneOffset: -0.5, startT: 0.45, speed: 1.2, color: PALETTE.lavender, carType: 'sedan' as const, scale: 0.9 },
-    { laneOffset: 0.3, startT: 0.48, speed: 1.0, color: PALETTE.turquoise, carType: 'sedan' as const, scale: 0.9 },
-    { laneOffset: -0.7, startT: 0.52, speed: 1.15, color: PALETTE.creamYellow, carType: 'sedan' as const, scale: 0.85 },
-    { laneOffset: 0.5, startT: 0.55, speed: 0.95, color: PALETTE.coralRed, carType: 'sedan' as const, scale: 0.85 },
+    // === 원경 ===
+    { laneOffset: 0.5, startT: 0.42, speed: 0.95, color: PALETTE.lavender, carType: 'sedan' as const, scale: 0.85 },
+    { laneOffset: -0.35, startT: 0.38, speed: 0.9, color: PALETTE.turquoise, carType: 'sedan' as const, scale: 0.8 },
+    { laneOffset: 0.2, startT: 0.32, speed: 1.0, color: PALETTE.creamYellow, carType: 'sedan' as const, scale: 0.75 },
+    { laneOffset: -0.55, startT: 0.28, speed: 0.85, color: PALETTE.coralRed, carType: 'sedan' as const, scale: 0.7 },
 
-    // === FAR BACKGROUND ===
-    { laneOffset: 0.0, startT: 0.65, speed: 1.3, color: PALETTE.skyBlue, carType: 'sedan' as const, scale: 0.8 },
-    { laneOffset: -0.4, startT: 0.70, speed: 1.2, color: PALETTE.ivory, carType: 'sedan' as const, scale: 0.75 },
-    { laneOffset: 0.6, startT: 0.75, speed: 1.1, color: PALETTE.mintGreen, carType: 'sedan' as const, scale: 0.7 },
+    // === 소실점 근처 ===
+    { laneOffset: 0.4, startT: 0.20, speed: 1.1, color: PALETTE.skyBlue, carType: 'sedan' as const, scale: 0.65 },
+    { laneOffset: -0.2, startT: 0.15, speed: 1.0, color: PALETTE.ivory, carType: 'sedan' as const, scale: 0.6 },
+    { laneOffset: 0.0, startT: 0.08, speed: 1.15, color: PALETTE.mintGreen, carType: 'sedan' as const, scale: 0.5 },
   ];
 
   return (
