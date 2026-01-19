@@ -8,7 +8,9 @@ interface MagazineCoverOverlayProps {
 
 const MagazineCoverOverlay: React.FC<MagazineCoverOverlayProps> = ({ mode, onToggleMode }) => {
   return (
-    <div className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-700 ${mode === 'EXPLORE' ? 'opacity-0' : 'opacity-100'}`}>
+    <div
+      className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-700 ${mode === 'EXPLORE' ? 'opacity-0' : 'opacity-100'}`}
+    >
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 text-center py-2" style={{ backgroundColor: '#2a2018' }}>
         <span
